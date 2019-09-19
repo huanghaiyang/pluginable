@@ -1,14 +1,14 @@
-import DummyClass from "../src/pluginable"
+import Pluginable from "../src/pluginable"
 
 /**
- * Dummy test
+ * Pluginable test
  */
-describe("Dummy test", () => {
+describe("Pluginable test", () => {
   it("works if true is truthy", () => {
     expect(true).toBeTruthy()
   })
 
-  it("DummyClass is instantiable", () => {
-    expect(new DummyClass()).toBeInstanceOf(DummyClass)
+  it("Pluginable is instantiable", () => {
+    expect(new Pluginable()).toBeInstanceOf(Pluginable)
   })
 })
