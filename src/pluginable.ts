@@ -1,25 +1,11 @@
-import { IPluginable, IPlugin, PluginType } from './interface';
+import { IPluginable, IPlugin, PluginType, IError, IStacktrace } from './interface';
 
 export default class Pluginable implements IPluginable<IPlugin> {
 
-  syncPlugins: Array<IPlugin> = [];
-
   asyncPlugins: Array<IPlugin> = [];
 
-  promisePlugins: Array<IPlugin> = [];
-
-  pluginSync(plugin: IPlugin): IPlugin {
-    this._tap(PluginType.SYNC, plugin);
-    return plugin;
-  }
-
-  pluginAsync(plugin: IPlugin): IPlugin {
+  plugin(plugin: IPlugin): IPlugin {
     this._tap(PluginType.ASYNC, plugin);
-    return plugin;
-  }
-
-  pluginPromise(plugin: IPlugin): IPlugin {
-    this._tap(PluginType.PROMISE, plugin);
     return plugin;
   }
 
@@ -28,14 +14,28 @@ export default class Pluginable implements IPluginable<IPlugin> {
       case PluginType.ASYNC:
         this.asyncPlugins.push(plugin);
         break;
-      case PluginType.SYNC:
-        this.asyncPlugins.push(plugin);
-        break;
-      case PluginType.PROMISE:
-        this.promisePlugins.push(plugin);
-        break;
     }
     return plugin;
   }
 
+  async publish(payload: any) {
+    try {
+      this.asyncPlugins.forEach(async plugin => {
+        const loaded = await plugin.onLoaded() as Boolean;
+        if (loaded) {
+          plugin.onPayload(payload);
+        }
+      });
+    } catch (error) {
+      
+    }
+  }
+
+  onError(callback?: (error: IError<String>, stacktrace?: IStacktrace<String>) => void): void {
+    
+  }
+
+  onComplete(callback?: (result: any) => void): void {
+
+  }
 }
