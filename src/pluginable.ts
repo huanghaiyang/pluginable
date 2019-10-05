@@ -1,11 +1,31 @@
-import { IPluginable, IPlugin, PluginType, IError, IStacktrace, IPluginFactory } from './interface';
+import { IPluginable, IPlugin, PluginType, IError, IStacktrace, IPluginFactory, IEvent, ISubscribe, SubscribePredicate } from './interface';
 import { isUndefined, isNull, isNullOrUndefined } from 'util';
 
-export default class Pluginable implements IPluginable<IPlugin, IPluginFactory<IPlugin>> {
+class Subscribe implements ISubscribe {
+
+  predicate(func: SubscribePredicate): ISubscribe {
+    return new InternalSubscribe();
+  }
+}
+
+class InternalSubscribe extends Subscribe {
+  constructor() {
+    super();
+    this.predicateFunc = (event: IEvent) => true
+  }
+
+  predicateFunc: SubscribePredicate;
+}
+
+export default class Pluginable implements IPluginable<IPlugin, IPluginFactory<IPlugin>, IEvent, ISubscribe> {
+
+  _subscribes: Map<String, ISubscribe> = new Map();
+
+  events: Array<IEvent> = [];
 
   asyncPlugins: Array<IPlugin> = [];
 
-  addPlugin(plugin?: IPlugin, pluginFactory?: IPluginFactory<IPlugin>): IPlugin | null {
+  addPlugin(plugin?: IPlugin, pluginFactory?: IPluginFactory<IPlugin>): ISubscribe | null {
     if (isNullOrUndefined(plugin)) {
       console.warn('WARNING: The parameter named "plugin" of function [addPlugin] is null or undefined.')
       if (!isNullOrUndefined(pluginFactory)) {
@@ -14,11 +34,13 @@ export default class Pluginable implements IPluginable<IPlugin, IPluginFactory<I
     }
     if (!isNullOrUndefined(plugin)) {
       this._tap(PluginType.ASYNC, plugin);
-      return plugin;
+      const sub = new Subscribe();
+      this._subscribes.set(plugin.id, sub);
+      return sub;
     } else {
       console.warn('WARNING: The returned value of function [addPlugin] is null.')
+      return null;
     }
-    return null;
   }
 
   _tap(type: PluginType, plugin: IPlugin): IPlugin {
@@ -34,12 +56,17 @@ export default class Pluginable implements IPluginable<IPlugin, IPluginFactory<I
     return plugin;
   }
 
-  async publish(payload: any) {
+  async publish(event: IEvent, payload?: any) {
     try {
       this.asyncPlugins.forEach(async plugin => {
-        const loaded = await plugin.onLoaded() as Boolean;
-        if (loaded) {
-          plugin.onPayload(payload);
+        if (this._subscribes.has(plugin.id)) {
+          const subscribe = this._subscribes.get(plugin.id) as InternalSubscribe;
+          if (subscribe.predicateFunc(event)) {
+            const loaded = await plugin.onLoaded() as Boolean;
+            if (loaded) {
+              plugin.onPayload(payload);
+            }
+          }
         }
       });
     } catch (error) {

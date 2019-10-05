@@ -1,7 +1,8 @@
-export interface IPluginable<T, F> {
+export interface IPluginable<T, F, D, H> {
   asyncPlugins: Array<T>;
-  addPlugin(t?: T, f?: F): T | null;
-  publish(payload: any): void;
+  events: Array<D>,
+  addPlugin(t?: T, f?: F): H | null;
+  publish(event: IEvent, payload?: any): void;
   onError: (callback?: (error: IError<String>, stacktrace?: IStacktrace<String>) => void) => void;
   onComplete: (callback?: (result: any) => void) => void;
 }
@@ -19,7 +20,7 @@ export interface IPlugin {
   name: String;
   isLoaded: Boolean;
   onLoaded: (cusumer?: () => void) => Boolean;
-  onPayload: (cusumer?: (payload: any) => void) => void;
+  onPayload: (payload?: any) => void;
 }
 
 export interface IPluginFactory<T> {
@@ -28,4 +29,17 @@ export interface IPluginFactory<T> {
 
 export enum PluginType {
   ASYNC,
+}
+
+
+export interface IEvent {
+  name: String
+}
+
+export interface ISubscribe {
+  predicate(func: SubscribePredicate): ISubscribe
+}
+
+export interface SubscribePredicate {
+  (event: IEvent): Boolean;
 }
