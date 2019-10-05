@@ -1,9 +1,8 @@
-import { IPluginable, IPlugin, PluginType, IError, IStacktrace, IPluginFactory, IEvent, ISubscribe, SubscribePredicate } from './interface';
+import { IPluginable, IPlugin, PluginType, IPluginFactory, IEvent, ISubscribe, ISubscribePredicate, DispatcherType } from './interface';
 import { isUndefined, isNull, isNullOrUndefined } from 'util';
 
 class Subscribe implements ISubscribe {
-
-  predicate(func: SubscribePredicate): ISubscribe {
+  predicate(func: ISubscribePredicate): ISubscribe {
     return new InternalSubscribe();
   }
 }
@@ -14,7 +13,7 @@ class InternalSubscribe extends Subscribe {
     this.predicateFunc = (event: IEvent) => true
   }
 
-  predicateFunc: SubscribePredicate;
+  predicateFunc: ISubscribePredicate;
 }
 
 export default class Pluginable implements IPluginable<IPlugin, IPluginFactory<IPlugin>, IEvent, ISubscribe> {
@@ -58,27 +57,47 @@ export default class Pluginable implements IPluginable<IPlugin, IPluginFactory<I
 
   async publish(event: IEvent, payload?: any) {
     try {
-      this.asyncPlugins.forEach(async plugin => {
-        if (this._subscribes.has(plugin.id)) {
-          const subscribe = this._subscribes.get(plugin.id) as InternalSubscribe;
-          if (subscribe.predicateFunc(event)) {
-            const loaded = await plugin.onLoaded() as Boolean;
-            if (loaded) {
-              plugin.onPayload(payload);
-            }
-          }
-        }
-      });
+      this._onWhat(DispatcherType.ONPAYLOAD, event, payload);
     } catch (error) {
-
+      this.onError(event, error);
     }
   }
 
-  onError(callback?: (error: IError<String>, stacktrace?: IStacktrace<String>) => void): void {
-
+  onError(event: IEvent, error?: Error) {
+    this._onWhat(DispatcherType.ONERROR, event, error);
   }
 
-  onComplete(callback?: (result: any) => void): void {
+  onComplete(event: IEvent, result?: any): void {
+    this._onWhat(DispatcherType.ONPAYLOAD, event, result);
+  }
 
+  onPayload(event: IEvent, result?: any): void {
+    // do nothing
+  }
+
+  _onWhat(type: DispatcherType, event: IEvent, data: any) {
+    this.asyncPlugins.forEach(async plugin => {
+      if (this._subscribes.has(plugin.id)) {
+        const subscribe = this._subscribes.get(plugin.id) as InternalSubscribe;
+        if (subscribe.predicateFunc(event)) {
+          const loaded = await plugin.onLoaded() as Boolean;
+          if (loaded) {
+            switch (type) {
+              case DispatcherType.ONERROR:
+                plugin.onError(event, data as Error);
+                break;
+              case DispatcherType.ONPAYLOAD:
+                plugin.onPayload(event, data as any);
+                break;
+              case DispatcherType.ONCOMPLETE:
+                plugin.onComplete(event, data as any);
+                break;
+              default:
+                break;
+            }
+          }
+        }
+      }
+    });
   }
 }

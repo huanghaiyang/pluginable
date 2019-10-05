@@ -1,26 +1,21 @@
-export interface IPluginable<T, F, D, H> {
+export interface IPluginable<T, F, D, H> extends IDispatcherable {
   asyncPlugins: Array<T>;
   events: Array<D>,
   addPlugin(t?: T, f?: F): H | null;
   publish(event: IEvent, payload?: any): void;
-  onError: (callback?: (error: IError<String>, stacktrace?: IStacktrace<String>) => void) => void;
-  onComplete: (callback?: (result: any) => void) => void;
 }
 
-export interface IStacktrace<T> {
-  value: T;
-}
-
-export interface IError<T> {
-  value: T;
-}
-
-export interface IPlugin {
+export interface IPlugin extends IDispatcherable {
   id: String;
   name: String;
   isLoaded: Boolean;
   onLoaded: (cusumer?: () => void) => Boolean;
-  onPayload: (payload?: any) => void;
+}
+
+export interface IDispatcherable {
+  onPayload: IOnPayload;
+  onError: IOnError;
+  onComplete: IOnComplete;
 }
 
 export interface IPluginFactory<T> {
@@ -31,15 +26,30 @@ export enum PluginType {
   ASYNC,
 }
 
-
 export interface IEvent {
   name: String
 }
 
 export interface ISubscribe {
-  predicate(func: SubscribePredicate): ISubscribe
+  predicate(func: ISubscribePredicate): ISubscribe
 }
 
-export interface SubscribePredicate {
+export interface ISubscribePredicate {
   (event: IEvent): Boolean;
+}
+
+export interface IOnPayload {
+  (event: IEvent, payload?: any): void
+}
+
+export interface IOnError {
+  (event: IEvent, error?: Error): void
+}
+
+export interface IOnComplete {
+  (event: IEvent, result?: any): void
+}
+
+export enum DispatcherType {
+  ONPAYLOAD, ONERROR, ONCOMPLETE
 }
