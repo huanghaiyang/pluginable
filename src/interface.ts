@@ -1,6 +1,6 @@
-export interface IPluginable<T> {
+export interface IPluginable<T, F> {
   asyncPlugins: Array<T>;
-  plugin(t: T): T;
+  addPlugin(t?: T, f?: F): T | null;
   publish(payload: any): void;
   onError: (callback?: (error: IError<String>, stacktrace?: IStacktrace<String>) => void) => void;
   onComplete: (callback?: (result: any) => void) => void;
@@ -20,6 +20,10 @@ export interface IPlugin {
   isLoaded: Boolean;
   onLoaded: (cusumer?: () => void) => Boolean;
   onPayload: (cusumer?: (payload: any) => void) => void;
+}
+
+export interface IPluginFactory<T> {
+  product(): T
 }
 
 export enum PluginType {
